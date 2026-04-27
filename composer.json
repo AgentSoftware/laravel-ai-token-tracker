@@ -33,7 +33,10 @@
         "laravel": {
             "providers": [
                 "AgentSoftware\\LaravelAiTokenTracker\\LaravelAiTokenTrackerServiceProvider"
-            ]
+            ],
+            "aliases": {
+                "AiUsage": "AgentSoftware\\LaravelAiTokenTracker\\Facades\\AiUsage"
+            }
         }
     },
     "scripts": {

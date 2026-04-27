@@ -22,5 +22,7 @@ class LaravelAiTokenTrackerServiceProvider extends PackageServiceProvider
     public function packageBooted(): void
     {
         Event::listen(AgentPrompted::class, RecordAgentTokenUsage::class);
+
+        $this->app->singleton(TokenUsageRepository::class);
     }
 }
