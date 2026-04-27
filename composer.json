@@ -21,8 +21,7 @@
     },
     "autoload": {
         "psr-4": {
-            "AgentSoftware\\LaravelAiTokenTracker\\": "src/",
-            "AgentSoftware\\LaravelAiTokenTracker\\Database\\": "database/"
+            "AgentSoftware\\LaravelAiTokenTracker\\": "src/"
         }
     },
     "autoload-dev": {
@@ -34,10 +33,7 @@
         "laravel": {
             "providers": [
                 "AgentSoftware\\LaravelAiTokenTracker\\LaravelAiTokenTrackerServiceProvider"
-            ],
-            "aliases": {
-                "AiUsage": "AgentSoftware\\LaravelAiTokenTracker\\Facades\\AiUsage"
-            }
+            ]
         }
     },
     "scripts": {
