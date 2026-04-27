@@ -22,13 +22,20 @@ class TokenUsageRepository
     /** @return array{input_tokens: int, output_tokens: int, cache_write_tokens: int, cache_read_tokens: int} */
     public function total(): array
     {
-        $query = $this->baseQuery();
+        $row = $this->baseQuery()
+            ->selectRaw('
+                SUM(input_tokens) as input_tokens,
+                SUM(output_tokens) as output_tokens,
+                SUM(cache_write_tokens) as cache_write_tokens,
+                SUM(cache_read_tokens) as cache_read_tokens
+            ')
+            ->first();
 
         return [
-            'input_tokens' => (int) $query->sum('input_tokens'),
-            'output_tokens' => (int) $query->sum('output_tokens'),
-            'cache_write_tokens' => (int) $query->sum('cache_write_tokens'),
-            'cache_read_tokens' => (int) $query->sum('cache_read_tokens'),
+            'input_tokens' => (int) ($row?->input_tokens ?? 0),
+            'output_tokens' => (int) ($row?->output_tokens ?? 0),
+            'cache_write_tokens' => (int) ($row?->cache_write_tokens ?? 0),
+            'cache_read_tokens' => (int) ($row?->cache_read_tokens ?? 0),
         ];
     }
 
