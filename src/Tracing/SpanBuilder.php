@@ -52,6 +52,7 @@ class SpanBuilder
                 // meaningful (the agent called no tools at all) and must not
                 // be silently stripped like the null-coalesced fields are.
                 'tool_calls' => $this->toolCallNames($event->response->toolCalls),
+                'tool_call_details' => $this->toolCallDetails($event->response->toolCalls),
                 'first_step_tool_calls' => $this->firstStepToolCallNames($event->response->steps),
             ]),
             'metrics' => [
@@ -131,6 +132,22 @@ class SpanBuilder
     private function toolCallNames(Collection $toolCalls): array
     {
         return $toolCalls->map(fn (ToolCall $call): string => $call->name)->values()->all();
+    }
+
+    /**
+     * Name + arguments of every tool call, matching the shape offline eval
+     * runs expose as `tool_call_details` — so a JS scorer published for
+     * online scoring can inspect the same payload on live spans.
+     *
+     * @param  Collection<int, ToolCall>  $toolCalls
+     * @return array<int, array{name: string, arguments: array<string, mixed>}>
+     */
+    private function toolCallDetails(Collection $toolCalls): array
+    {
+        return $toolCalls
+            ->map(fn (ToolCall $call): array => ['name' => $call->name, 'arguments' => $call->arguments])
+            ->values()
+            ->all();
     }
 
     /**

@@ -39,6 +39,7 @@ it('builds an agent span without source context as its own trace root', function
         ->and($span['metadata']['model'])->toBe('claude-haiku-4-5-20251001')
         ->and($span['metadata']['provider'])->toBe('anthropic')
         ->and($span['metadata']['tool_calls'])->toBe([])
+        ->and($span['metadata']['tool_call_details'])->toBe([])
         ->and($span['metadata']['first_step_tool_calls'])->toBe([])
         ->and($span['metrics'])->toBe([
             'start' => 100.0,
@@ -228,7 +229,10 @@ it('attaches tool call names and first step tool call names to agent span metada
         meta: new Meta(provider: 'anthropic', model: 'claude-haiku-4-5-20251001'),
     ))
         ->withToolCallsAndResults(
-            toolCalls: collect([new ToolCall('c-1', 'WriteTextTool', []), new ToolCall('c-2', 'WriteLinkTool', [])]),
+            toolCalls: collect([
+                new ToolCall('c-1', 'WriteTextTool', ['field_path' => 'content.title']),
+                new ToolCall('c-2', 'WriteLinkTool', ['href' => 'https://old-site.example', 'link_type' => 'url']),
+            ]),
             toolResults: collect([]),
         )
         ->withSteps(collect([$firstStep]));
@@ -246,6 +250,10 @@ it('attaches tool call names and first step tool call names to agent span metada
     $span = app(SpanBuilder::class)->agentSpan($event, 100.0, 101.0);
 
     expect($span['metadata']['tool_calls'])->toBe(['WriteTextTool', 'WriteLinkTool'])
+        ->and($span['metadata']['tool_call_details'])->toBe([
+            ['name' => 'WriteTextTool', 'arguments' => ['field_path' => 'content.title']],
+            ['name' => 'WriteLinkTool', 'arguments' => ['href' => 'https://old-site.example', 'link_type' => 'url']],
+        ])
         ->and($span['metadata']['first_step_tool_calls'])->toBe(['WriteTextTool']);
 });
 
@@ -270,6 +278,7 @@ it('reports no first step tool calls when the response has no steps', function (
     $span = app(SpanBuilder::class)->agentSpan($event, 100.0, 101.0);
 
     expect($span['metadata']['tool_calls'])->toBe([])
+        ->and($span['metadata']['tool_call_details'])->toBe([])
         ->and($span['metadata']['first_step_tool_calls'])->toBe([]);
 });
 
