@@ -259,7 +259,7 @@ abstract class RunEvalCommand extends Command
 
             return [
                 Str::limit((string) ($event->input['input'] ?? ''), 38),
-                ...$scoreNames->map(fn (string $name): string => $this->scoreCell($values[$name]))->all(),
+                ...$scoreNames->map(fn (string $name): string => $this->scoreCell($values[$name] ?? null))->all(),
                 (string) $event->metrics->latencyMs,
                 (string) $event->metrics->tokens,
             ];
@@ -268,8 +268,16 @@ abstract class RunEvalCommand extends Command
         table($headers, $rows);
     }
 
-    private function scoreCell(float $score): string
+    /**
+     * A null score is one this row never asserted: show it as absent rather than
+     * colouring a number the run did not measure.
+     */
+    private function scoreCell(?float $score): string
     {
+        if ($score === null) {
+            return '<fg=gray>—</>';
+        }
+
         $colour = match (true) {
             $score >= 0.8 => 'green',
             $score >= 0.5 => 'yellow',

@@ -126,6 +126,64 @@ it('folds per-score diagnostics into the event metadata so they are not lost', f
     });
 });
 
+it('promotes the row tags to the first-class tags field so experiments filter by tag', function () {
+    fakeBraintrustExperimentApi();
+
+    app(BraintrustExperimentExporter::class)->export('composer/v3/gemini/t0', [experimentEvent()]);
+
+    Http::assertSent(function (Request $request): bool {
+        if (! str_contains($request->url(), '/insert')) {
+            return false;
+        }
+
+        return $request->data()['events'][0]['tags'] === ['terse'];
+    });
+});
+
+it('omits an untagged row from the tags field entirely', function () {
+    fakeBraintrustExperimentApi();
+
+    $event = new ExperimentEventData(
+        input: ['brief' => 'Make it pop'],
+        output: ['blocks' => []],
+        scores: [new Score('catalogue_valid', 1.0)],
+        metadata: new EvalRunMetadata(promptName: null, promptVersion: null, model: null, provider: null, tags: []),
+        metrics: new EvalRunMetrics(latencyMs: 1, promptTokens: 1, completionTokens: 1, tokens: 2),
+    );
+
+    app(BraintrustExperimentExporter::class)->export('composer/v3/gemini/t0', [$event]);
+
+    Http::assertSent(function (Request $request): bool {
+        if (! str_contains($request->url(), '/insert')) {
+            return false;
+        }
+
+        return ! array_key_exists('tags', $request->data()['events'][0]);
+    });
+});
+
+it('sends no value for a skipped score while still shipping its reason', function () {
+    fakeBraintrustExperimentApi();
+
+    $event = experimentEvent([
+        new Score('summarises_brief', 0.8, ['reasoning' => 'captures the topic']),
+        Score::skipped('prose_quality', ['reason' => 'row does not assert this']),
+    ]);
+
+    app(BraintrustExperimentExporter::class)->export('composer/v3/gemini/t0', [$event]);
+
+    Http::assertSent(function (Request $request): bool {
+        if (! str_contains($request->url(), '/insert')) {
+            return false;
+        }
+
+        $event = $request->data()['events'][0];
+
+        return $event['scores'] === ['summarises_brief' => 0.8]
+            && $event['metadata']['scores']['prose_quality'] === ['reason' => 'row does not assert this'];
+    });
+});
+
 it('throws on http failure', function () {
     Http::fake([
         'api.braintrust.dev/v1/project' => Http::response(['id' => 'proj-123']),
