@@ -118,14 +118,14 @@ it('clamps a judge rating outside the scale', function (int $rating, float $expe
     'below zero' => [-5, 0.0],
 ]);
 
-it('skips the score when the judge is unreachable, recording the error', function (): void {
+it('skips the score when the judge call fails, recording the error', function (): void {
     JudgeAgent::fake(fn () => throw new RuntimeException('503 Service Unavailable'));
 
     $score = stubJudgeScorer()->score(new EvalSubject([]));
 
     expect($score->skipped)->toBeTrue()
         ->and($score->name)->toBe('stub_judgement')
-        ->and($score->metadata['reason'])->toBe('judge unreachable')
+        ->and($score->metadata['reason'])->toBe('judge call failed')
         ->and($score->metadata['error'])->toBe('503 Service Unavailable');
 });
 

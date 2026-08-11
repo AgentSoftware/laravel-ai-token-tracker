@@ -86,11 +86,16 @@ abstract class JudgeScorer implements Scorer
                 config('ai-companion.eval.judge.model'),
             );
         } catch (Throwable $exception) {
-            // An outage is an absence of measurement, not a result: scoring 0 would read
-            // as a model regression and 1 would pad the average. Skipping also keeps the
-            // row's other scores, which an escaping exception would lose entirely.
+            // An unanswered judge is an absence of measurement, not a result: scoring 0
+            // would read as a model regression and 1 would pad the average. Skipping also
+            // keeps the row's other scores, which an escaping exception would lose.
+            //
+            // Deliberately broad, and deliberately vague about the cause: anything thrown
+            // under prompt() lands here, including failures that are nothing to do with the
+            // provider (a broken database reached by response-logging middleware, say). The
+            // message is the only honest account of which — never claim an outage.
             return Score::skipped($this->name(), [
-                'reason' => 'judge unreachable',
+                'reason' => 'judge call failed',
                 'error' => $exception->getMessage(),
             ]);
         }
