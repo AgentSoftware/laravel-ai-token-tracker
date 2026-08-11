@@ -72,6 +72,54 @@ function stubJudgeScorer(
     };
 }
 
+/**
+ * Overrides nothing but the four abstract members, so the base defaults —
+ * asserts, scale, metadata and the judge provider — are the ones under test.
+ */
+function bareJudgeScorer(): JudgeScorer
+{
+    return new class extends JudgeScorer
+    {
+        protected function name(): string
+        {
+            return 'bare_judgement';
+        }
+
+        protected function rubric(EvalSubject $subject): string
+        {
+            return 'Rate the candidate.';
+        }
+
+        protected function reference(EvalSubject $subject): string
+        {
+            return 'Ground truth for the rubric.';
+        }
+
+        protected function candidate(EvalSubject $subject): string
+        {
+            return 'the candidate diagnosis';
+        }
+    };
+}
+
+it('defaults to asserting every row, a scale of 10, no extra metadata and the configured provider', function (): void {
+    config()->set('ai-companion.eval.judge.provider', 'anthropic');
+
+    $provider = null;
+    JudgeAgent::fake(function (string $prompt, mixed $attachments, mixed $judge) use (&$provider): array {
+        $provider = $judge->name();
+
+        return ['rating' => 5, 'reasoning' => 'halfway'];
+    });
+
+    $score = bareJudgeScorer()->score(new EvalSubject([]));
+
+    expect($score->skipped)->toBeFalse()
+        ->and($score->score)->toBe(0.5)
+        ->and($score->metadata)->toBe(['rating' => 5, 'scale' => 10, 'reasoning' => 'halfway'])
+        ->and($provider)->toBe('anthropic');
+});
+
 it('skips the score without calling the judge when the row asserts nothing', function (): void {
     JudgeAgent::fake(fn (): array => ['rating' => 0, 'reasoning' => 'should not be consumed']);
 
