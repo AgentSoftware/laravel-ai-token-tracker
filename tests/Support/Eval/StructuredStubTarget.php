@@ -36,6 +36,7 @@ class StructuredStubTarget implements EvalTarget
             new FixedScorer('alpha', 0.9),
             new FixedScorer('beta', 0.6),
             new FixedScorer('gamma', 0.3),
+            new GatedScorer('delta'),
         ];
     }
 

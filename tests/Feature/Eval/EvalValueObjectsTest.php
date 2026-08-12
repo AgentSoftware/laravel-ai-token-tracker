@@ -2,7 +2,10 @@
 
 declare(strict_types=1);
 
+use AgentSoftware\LaravelAiCompanion\Eval\EvalRunMetadata;
+use AgentSoftware\LaravelAiCompanion\Eval\EvalRunMetrics;
 use AgentSoftware\LaravelAiCompanion\Eval\EvalSubject;
+use AgentSoftware\LaravelAiCompanion\Eval\ExperimentEventData;
 use AgentSoftware\LaravelAiCompanion\Eval\Score;
 
 it('exposes the output and defaults context to null and input to an empty array', function () {
@@ -40,5 +43,34 @@ it('retains the metadata passed to the score', function () {
 
     expect($score->name)->toBe('hydrates_clean')
         ->and($score->score)->toBe(0.5)
-        ->and($score->metadata)->toBe(['reason' => 'partial']);
+        ->and($score->metadata)->toBe(['reason' => 'partial'])
+        ->and($score->skipped)->toBeFalse();
+});
+
+it('marks a skipped score as unmeasured while keeping its name and metadata', function () {
+    $score = Score::skipped('prose_quality', ['reason' => 'row does not assert this']);
+
+    expect($score->skipped)->toBeTrue()
+        ->and($score->name)->toBe('prose_quality')
+        ->and($score->metadata)->toBe(['reason' => 'row does not assert this']);
+});
+
+it('omits skipped scores from the wire values while keeping their diagnostics', function () {
+    $event = new ExperimentEventData(
+        input: ['input' => 'Announce the spring sale'],
+        output: ['name' => 'Spring Sale'],
+        scores: [
+            new Score('measured', 0.25, ['rating' => 1]),
+            Score::skipped('not_asserted', ['reason' => 'row does not assert this']),
+        ],
+        metadata: new EvalRunMetadata(promptName: null, promptVersion: null, model: null, provider: null, tags: []),
+        metrics: new EvalRunMetrics(latencyMs: 10, promptTokens: 1, completionTokens: 1, tokens: 2),
+    );
+
+    expect($event->scoreValues())->toBe(['measured' => 0.25])
+        ->and($event->toArray()['scores'])->toBe(['measured' => 0.25])
+        ->and($event->scoreMetadata())->toBe([
+            'measured' => ['rating' => 1],
+            'not_asserted' => ['reason' => 'row does not assert this'],
+        ]);
 });

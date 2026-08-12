@@ -5,6 +5,7 @@ declare(strict_types=1);
 use AgentSoftware\LaravelAiCompanion\Eval\Contracts\ConcurrencyRunner;
 use AgentSoftware\LaravelAiCompanion\Tests\Support\Eval\AttachmentStubTarget;
 use AgentSoftware\LaravelAiCompanion\Tests\Support\Eval\CapturingScorer;
+use AgentSoftware\LaravelAiCompanion\Tests\Support\Eval\GatedScorer;
 use AgentSoftware\LaravelAiCompanion\Tests\Support\Eval\RecordingConcurrencyRunner;
 use AgentSoftware\LaravelAiCompanion\Tests\Support\Eval\StructuredStubAgent;
 use AgentSoftware\LaravelAiCompanion\Tests\Support\Eval\StructuredStubTarget;
@@ -82,6 +83,20 @@ it('scores a structured target and writes scored NDJSON', function (): void {
         ->and($rows[0]['metadata']['prompt_name'])->toBe('stub')
         ->and($rows[0]['metadata']['prompt_version'])->toBe(2)
         ->and($rows[0]['metadata']['tags'])->toBe(['sale']);
+});
+
+it('omits a skipped score from a row while keeping its reason, and still renders the table', function (): void {
+    StructuredStubAgent::fake([['name' => GatedScorer::SENTINEL], ['name' => 'Spring Sale Event']]);
+    writeEvalDataset([['brief' => 'a row that asserts nothing'], ['brief' => 'a row that asserts']]);
+
+    $this->artisan('stub:eval', ['target' => 'stub'])->assertSuccessful();
+
+    $rows = readNdjson(storage_path('app/braintrust/stub.ndjson'));
+
+    expect($rows)->toHaveCount(2)
+        ->and($rows[0]['scores'])->not->toHaveKey('delta')
+        ->and($rows[0]['scores'])->toHaveKey('alpha')
+        ->and((float) $rows[1]['scores']['delta'])->toBe(1.0);
 });
 
 it('pushes a Braintrust experiment named after the target', function (): void {

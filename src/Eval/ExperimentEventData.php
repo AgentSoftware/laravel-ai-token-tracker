@@ -24,11 +24,16 @@ final readonly class ExperimentEventData
     /**
      * The scorer results as a name => score map (the wire shape backends expect).
      *
+     * Skipped scores are absent rather than zero: a score the row never asserted
+     * must not be averaged at all. Their diagnostics still ship via
+     * {@see self::scoreMetadata()}.
+     *
      * @return array<string, float>
      */
     public function scoreValues(): array
     {
         return collect($this->scores)
+            ->reject(fn (Score $score): bool => $score->skipped)
             ->mapWithKeys(fn (Score $score): array => [$score->name => $score->score])
             ->all();
     }

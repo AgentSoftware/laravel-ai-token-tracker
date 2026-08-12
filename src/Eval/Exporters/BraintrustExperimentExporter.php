@@ -62,6 +62,8 @@ class BraintrustExperimentExporter implements ExperimentExporter
             'output' => $event->output,
             'scores' => $event->scoreValues(),
             'expected' => $event->expected,
+            // Braintrust filters experiments by its own tags field, not by metadata.
+            'tags' => $event->metadata->tags !== [] ? $event->metadata->tags : null,
             'metadata' => $metadata !== [] ? $metadata : null,
             'metrics' => $event->metrics->toArray(),
         ], fn (mixed $value): bool => $value !== null);
