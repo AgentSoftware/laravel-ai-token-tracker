@@ -16,8 +16,9 @@ function stubJudgeScorer(
     int $scale = 4,
     array $metadata = [],
     mixed $provider = null,
+    string $reference = 'Ground truth for the rubric.',
 ): JudgeScorer {
-    return new class($asserts, $candidate, $scale, $metadata, $provider) extends JudgeScorer
+    return new class($asserts, $candidate, $scale, $metadata, $provider, $reference) extends JudgeScorer
     {
         /**
          * @param  array<string, mixed>  $extra
@@ -28,6 +29,7 @@ function stubJudgeScorer(
             private int $judgeScale,
             private array $extra,
             private mixed $provider,
+            private string $referenceText,
         ) {}
 
         protected function name(): string
@@ -42,7 +44,7 @@ function stubJudgeScorer(
 
         protected function reference(EvalSubject $subject): string
         {
-            return 'Ground truth for the rubric.';
+            return $this->referenceText;
         }
 
         protected function candidate(EvalSubject $subject): string
@@ -140,6 +142,18 @@ it('scores an empty candidate 0.0 without calling the judge', function (): void 
     expect($score->score)->toBe(0.0)
         ->and($score->skipped)->toBeFalse()
         ->and($score->metadata['reason'])->toBe('empty output');
+
+    JudgeAgent::assertNeverPrompted();
+});
+
+it('scores an empty reference 0.0 without calling the judge', function (): void {
+    JudgeAgent::fake(fn (): array => ['rating' => 4, 'reasoning' => 'should not be consumed']);
+
+    $score = stubJudgeScorer(reference: '')->score(new EvalSubject([]));
+
+    expect($score->score)->toBe(0.0)
+        ->and($score->skipped)->toBeFalse()
+        ->and($score->metadata['reason'])->toBe('empty reference');
 
     JudgeAgent::assertNeverPrompted();
 });

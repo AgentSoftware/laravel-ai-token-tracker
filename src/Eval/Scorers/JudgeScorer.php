@@ -69,6 +69,15 @@ abstract class JudgeScorer implements Scorer
             return Score::skipped($this->name(), ['reason' => 'row does not assert this']);
         }
 
+        // A judge needs something to judge against as much as something to judge;
+        // with either side missing there is nothing to ask, and the row asserted
+        // this behaviour, so it scores zero rather than skipping.
+        $reference = $this->reference($subject);
+
+        if ($reference === '') {
+            return new Score($this->name(), 0.0, ['reason' => 'empty reference']);
+        }
+
         $candidate = $this->candidate($subject);
 
         if ($candidate === '') {
@@ -79,7 +88,7 @@ abstract class JudgeScorer implements Scorer
 
         try {
             /** @var StructuredAgentResponse $response */
-            $response = JudgeAgent::make($this->rubric($subject), $this->reference($subject), $scale)->prompt(
+            $response = JudgeAgent::make($this->rubric($subject), $reference, $scale)->prompt(
                 $candidate,
                 [],
                 $this->judgeProvider(),
