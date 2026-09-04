@@ -11,6 +11,7 @@ use Laravel\Ai\Events\AgentPrompted;
 use Laravel\Ai\Events\ToolInvoked;
 use Laravel\Ai\Responses\Data\Step;
 use Laravel\Ai\Responses\Data\ToolCall;
+use Laravel\Ai\Responses\Data\ToolResult;
 use Laravel\Ai\Responses\StructuredAgentResponse;
 use Ramsey\Uuid\Uuid;
 
@@ -53,6 +54,7 @@ class SpanBuilder
                 // be silently stripped like the null-coalesced fields are.
                 'tool_calls' => $this->toolCallNames($event->response->toolCalls),
                 'tool_call_details' => $this->toolCallDetails($event->response->toolCalls),
+                'tool_results' => $this->toolResults($event->response->toolResults),
                 'first_step_tool_calls' => $this->firstStepToolCallNames($event->response->steps),
             ]),
             'metrics' => [
@@ -148,6 +150,20 @@ class SpanBuilder
             ->map(fn (ToolCall $call): array => ['name' => $call->name, 'arguments' => $call->arguments])
             ->values()
             ->all();
+    }
+
+    /**
+     * Full tool results, matching the shape offline eval runs expose as
+     * `tool_results` — so a JS scorer that needs to check what a tool
+     * actually returned (not just its name and arguments) works the same way
+     * online as it does offline.
+     *
+     * @param  Collection<int, ToolResult>  $toolResults
+     * @return array<int, array<string, mixed>>
+     */
+    private function toolResults(Collection $toolResults): array
+    {
+        return $toolResults->map(fn (ToolResult $result): array => $result->toArray())->values()->all();
     }
 
     /**
