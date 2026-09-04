@@ -175,6 +175,43 @@ it('builds a transcript with tool arguments and truncated results', function ():
     File::delete($out);
 });
 
+it('exposes tool results on the eval subject untruncated, unlike the transcript', function (): void {
+    config()->set('ai-companion.eval.targets', [ToolStubTarget::class]);
+
+    CapturingScorer::$subject = null;
+    ToolStubAgent::fake([new ToolCall('c-1', 'LookupStubTool', ['postcode' => 'SW1A 1AA']), 'all done']);
+    writeEvalDataset([['brief' => 'look up the property']]);
+
+    $out = sys_get_temp_dir().'/stub-tool-results.ndjson';
+
+    $this->artisan('stub:eval', ['target' => 'stub-tool', '--out' => $out])->assertSuccessful();
+
+    $toolResults = CapturingScorer::$subject->input['tool_results'];
+
+    expect($toolResults)->toHaveCount(1)
+        ->and($toolResults[0]['name'])->toBe('LookupStubTool')
+        ->and($toolResults[0]['arguments'])->toBe(['postcode' => 'SW1A 1AA'])
+        ->and($toolResults[0]['result'])->toBe(str_repeat('x', 600));
+
+    File::delete($out);
+});
+
+it('reports no tool results for a row the agent answered without calling a tool', function (): void {
+    config()->set('ai-companion.eval.targets', [ToolStubTarget::class]);
+
+    CapturingScorer::$subject = null;
+    ToolStubAgent::fake(['plain reply, no tools called']);
+    writeEvalDataset([['brief' => 'no tools needed']]);
+
+    $out = sys_get_temp_dir().'/stub-no-tool-results.ndjson';
+
+    $this->artisan('stub:eval', ['target' => 'stub-tool', '--out' => $out])->assertSuccessful();
+
+    expect(CapturingScorer::$subject->input['tool_results'])->toBe([]);
+
+    File::delete($out);
+});
+
 it('captures the first step tool calls when the agent reports steps', function (): void {
     config()->set('ai-companion.eval.targets', [ToolStubTarget::class]);
 
