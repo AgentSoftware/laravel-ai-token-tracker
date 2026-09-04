@@ -17,6 +17,7 @@ use Laravel\Ai\Responses\Data\FinishReason;
 use Laravel\Ai\Responses\Data\Meta;
 use Laravel\Ai\Responses\Data\Step;
 use Laravel\Ai\Responses\Data\ToolCall;
+use Laravel\Ai\Responses\Data\ToolResult;
 use Laravel\Ai\Responses\Data\Usage;
 use Laravel\Ai\Responses\StructuredAgentResponse;
 use Laravel\Ai\Tools\Request as ToolRequest;
@@ -40,6 +41,7 @@ it('builds an agent span without source context as its own trace root', function
         ->and($span['metadata']['provider'])->toBe('anthropic')
         ->and($span['metadata']['tool_calls'])->toBe([])
         ->and($span['metadata']['tool_call_details'])->toBe([])
+        ->and($span['metadata']['tool_results'])->toBe([])
         ->and($span['metadata']['first_step_tool_calls'])->toBe([])
         ->and($span['metrics'])->toBe([
             'start' => 100.0,
@@ -233,7 +235,9 @@ it('attaches tool call names and first step tool call names to agent span metada
                 new ToolCall('c-1', 'WriteTextTool', ['field_path' => 'content.title']),
                 new ToolCall('c-2', 'WriteLinkTool', ['href' => 'https://old-site.example', 'link_type' => 'url']),
             ]),
-            toolResults: collect([]),
+            toolResults: collect([
+                new ToolResult('c-1', 'WriteTextTool', ['field_path' => 'content.title'], 'ok'),
+            ]),
         )
         ->withSteps(collect([$firstStep]));
 
@@ -253,6 +257,9 @@ it('attaches tool call names and first step tool call names to agent span metada
         ->and($span['metadata']['tool_call_details'])->toBe([
             ['name' => 'WriteTextTool', 'arguments' => ['field_path' => 'content.title']],
             ['name' => 'WriteLinkTool', 'arguments' => ['href' => 'https://old-site.example', 'link_type' => 'url']],
+        ])
+        ->and($span['metadata']['tool_results'])->toBe([
+            ['id' => 'c-1', 'name' => 'WriteTextTool', 'arguments' => ['field_path' => 'content.title'], 'result' => 'ok', 'result_id' => null],
         ])
         ->and($span['metadata']['first_step_tool_calls'])->toBe(['WriteTextTool']);
 });
@@ -279,6 +286,7 @@ it('reports no first step tool calls when the response has no steps', function (
 
     expect($span['metadata']['tool_calls'])->toBe([])
         ->and($span['metadata']['tool_call_details'])->toBe([])
+        ->and($span['metadata']['tool_results'])->toBe([])
         ->and($span['metadata']['first_step_tool_calls'])->toBe([]);
 });
 
