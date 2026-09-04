@@ -95,6 +95,7 @@ final readonly class RowEvaluator
                     ->all(),
                 'transcript' => $transcript,
                 'first_step_tool_calls' => $firstStepToolCalls,
+                'tool_results' => $this->toolResults($response),
                 'text' => $response->text,
             ]);
             $scores = $evaluator->evaluate($subject);
@@ -159,6 +160,24 @@ final readonly class RowEvaluator
                 default => [],
             })
             ->implode("\n");
+    }
+
+    /**
+     * Structured tool results for scorers that need to check what a tool
+     * actually returned rather than a truncated stringified copy —
+     * transcript() exists for a human judge to read, this is for code to
+     * parse.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function toolResults(TextResponse $response): array
+    {
+        return $response->messages
+            ->filter(fn (Message $message): bool => $message instanceof ToolResultMessage)
+            ->flatMap(fn (ToolResultMessage $message) => $message->toolResults)
+            ->map(fn (ToolResult $result): array => $result->toArray())
+            ->values()
+            ->all();
     }
 
     private function scalarOrNull(mixed $value): int|string|null
